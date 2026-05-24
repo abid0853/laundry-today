@@ -184,7 +184,7 @@ export default function WillItDry() {
       <div className="mt-10 mb-4 text-center text-sm font-semibold text-slate-400 z-10 relative">
         Developed by{' '}
         <a 
-          href="https://github.com/abid0853" 
+          href="https://abidts.work/" 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-slate-600 hover:text-sky-500 transition-colors underline underline-offset-4"
