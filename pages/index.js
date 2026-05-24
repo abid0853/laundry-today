@@ -1,78 +1,100 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { useState, useEffect } from 'react';
+import { MapPin, Loader2, CloudSun, RefreshCw } from 'lucide-react';
+import axios from 'axios';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+export default function WillItDry() {
+  const [uiState, setUiState] = useState('idle'); // idle, loading, success, error
+  const [result, setResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  const checkWeather = () => {
+    setUiState('loading');
 
-export default function Home() {
+    if (!navigator.geolocation) {
+      setErrorMsg("Your browser doesn't support geolocation.");
+      setUiState('error');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const res = await axios.post('/api/weather', { 
+            lat: position.coords.latitude, 
+            lon: position.coords.longitude 
+          });
+          setResult(res.data);
+          setUiState('success');
+        } catch (err) {
+          setErrorMsg("Could not connect to the weather grid.");
+          setUiState('error');
+        }
+      }, 
+      (err) => {
+        setErrorMsg("Please allow location access to check your local sky.");
+        setUiState('error');
+      },
+      { timeout: 10000, maximumAge: 60000 } // Optimized GPS fetching
+    );
+  };
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className={`min-h-screen flex flex-col items-center justify-center p-4 transition-all duration-700 ease-in-out ${result ? result.bg : 'bg-slate-50'}`}>
+      
+      <main className="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-[2.5rem] shadow-2xl p-8 text-center transform transition-all hover:scale-[1.01]">
+        
+        {uiState === 'idle' || uiState === 'error' ? (
+          <div className="animate-in fade-in zoom-in duration-500">
+            <CloudSun className="w-28 h-28 mx-auto text-sky-400 mb-6 drop-shadow-md" />
+            <h1 className="text-4xl font-black text-slate-800 tracking-tight mb-3">Will It Dry?</h1>
+            <p className="text-slate-500 mb-10 font-medium leading-relaxed">
+              Stop guessing. Get an instant, hyper-local answer based on wind and humidity.
+            </p>
+            
+            <button 
+              onClick={checkWeather}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-5 px-8 rounded-2xl flex items-center justify-center transition-all shadow-lg hover:shadow-xl active:scale-95"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <MapPin className="w-6 h-6 mr-3" />
+              <span className="text-lg">Check My Location</span>
+            </button>
+            
+            {uiState === 'error' && (
+              <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-semibold border border-red-100">
+                {errorMsg}
+              </div>
+            )}
+          </div>
+        ) : uiState === 'loading' ? (
+          <div className="py-12 flex flex-col items-center justify-center animate-pulse">
+            <Loader2 className="w-16 h-16 text-sky-500 animate-spin mb-6" />
+            <p className="text-slate-500 font-medium text-lg">Analyzing local wind patterns...</p>
+          </div>
+        ) : (
+          <div className="py-6 animate-in slide-in-from-bottom-8 fade-in duration-700">
+            <div className="inline-block px-4 py-1 rounded-full bg-slate-100 text-slate-600 font-bold text-sm mb-6 tracking-wide uppercase">
+              Drying Score: {Math.round(result.score)}/100
+            </div>
+            <h2 className="text-4xl font-black text-slate-900 mb-4 leading-tight">{result.title}</h2>
+            <p className="text-xl text-slate-600 font-medium mb-10">{result.message}</p>
+            
+            <button 
+              onClick={() => { setResult(null); setUiState('idle'); }}
+              className="group flex items-center justify-center mx-auto text-slate-400 hover:text-slate-700 font-semibold transition-colors"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+              <RefreshCw className="w-5 h-5 mr-2 group-hover:rotate-180 transition-transform duration-500" />
+              Check again later
+            </button>
+          </div>
+        )}
       </main>
+
+      {/* Sponsor Banner - Hidden on success to keep UI clean, visible on idle */}
+      {uiState !== 'success' && (
+        <div className="mt-8 px-6 py-3 rounded-full bg-white/50 backdrop-blur-sm text-sm font-semibold text-slate-500 shadow-sm border border-black/5">
+          Sponsored by <span className="text-slate-800">[Your Local Laundry/Bakery Here]</span>
+        </div>
+      )}
     </div>
   );
 }
