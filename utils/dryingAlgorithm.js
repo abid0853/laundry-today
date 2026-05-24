@@ -1,52 +1,54 @@
-export function calculateDryingScore(hourlyData) {
-  const next4Hours = hourlyData.slice(0, 4);
+export function calculateDryingScore(forecastList) {
+  const next6Hours = forecastList.slice(0, 2);
   
   let rainImminent = false;
   let totalScore = 0;
 
-  next4Hours.forEach(hour => {
-    // 1. Immediate Failure Checks
-    if (hour.pop > 0.3 || (hour.rain && hour.rain['1h'] > 0)) {
-      rainImminent = true;
-    }
+  // Variables to hold our averages
+  let avgTemp = 0, avgHumidity = 0, avgWind = 0, avgClouds = 0;
 
-    // 2. Base Score Calculation per hour (out of 100)
-    let hourScore = 100;
+  next6Hours.forEach(block => {
+    if (block.pop > 0.3 || (block.rain && block.rain['3h'] > 0)) rainImminent = true;
 
-    // Humidity Penalty (Ideal is < 50%, harsh penalty above 80%)
-    if (hour.humidity > 50) {
-      hourScore -= (hour.humidity - 50) * 0.8; 
-    }
+    const temp = block.main.temp;
+    const humidity = block.main.humidity;
+    const wind_speed = block.wind.speed;
 
-    // Wind Bonus (Ideal is > 3 m/s)
-    if (hour.wind_speed > 3) {
-      hourScore += (hour.wind_speed - 3) * 2;
-    } else if (hour.wind_speed < 1) {
-      hourScore -= 10; // Stagnant air penalty
-    }
+    // Add to averages
+    avgTemp += temp;
+    avgHumidity += humidity;
+    avgWind += wind_speed;
+    avgClouds += block.clouds.all;
 
-    // Temperature Adjustment (Bonus for hot, penalty for cold)
-    if (hour.temp > 25) {
-      hourScore += (hour.temp - 25) * 1.5;
-    } else if (hour.temp < 15) {
-      hourScore -= (15 - hour.temp) * 1.5;
-    }
+    // Scoring logic
+    let blockScore = 100;
+    if (humidity > 50) blockScore -= (humidity - 50) * 0.8; 
+    if (wind_speed > 3) blockScore += (wind_speed - 3) * 2;
+    else if (wind_speed < 1) blockScore -= 10; 
+    if (temp > 25) blockScore += (temp - 25) * 1.5;
+    else if (temp < 15) blockScore -= (15 - temp) * 1.5;
 
-    // Cap the hour score at 100
-    totalScore += Math.min(Math.max(hourScore, 0), 100);
+    totalScore += Math.min(Math.max(blockScore, 0), 100);
   });
 
+  // Finalize averages
+  const conditions = [
+    { label: 'Temp', value: `${Math.round(avgTemp / 2)}°C`, icon: '🌡️' },
+    { label: 'Humidity', value: `${Math.round(avgHumidity / 2)}%`, icon: '💧' },
+    { label: 'Wind', value: `${(avgWind / 2).toFixed(1)} m/s`, icon: '🌬️' },
+    { label: 'Clouds', value: `${Math.round(avgClouds / 2)}%`, icon: '☁️' }
+  ];
+
+  const averageScore = totalScore / 2;
+
+  // Return the score AND the exact conditions
   if (rainImminent) {
-    return { status: 'bad', score: 0, title: 'No, Keep Them Inside 🌧️', message: 'Rain is expected in the next 4 hours.', bg: 'bg-red-500' };
-  }
-
-  const averageScore = totalScore / 4;
-
-  if (averageScore >= 75) {
-    return { status: 'excellent', score: averageScore, title: 'Yes, Perfect Weather! ☀️', message: 'High wind and low humidity. They will dry fast.', bg: 'bg-green-500' };
+    return { status: 'bad', score: 0, title: 'No, Keep Them Inside 🌧️', message: 'Rain is expected in the next few hours.', bg: 'bg-red-500', conditions };
+  } else if (averageScore >= 75) {
+    return { status: 'excellent', score: averageScore, title: 'Yes, Perfect Weather! ☀️', message: 'High wind and low humidity. They will dry fast.', bg: 'bg-green-500', conditions };
   } else if (averageScore >= 50) {
-    return { status: 'good', score: averageScore, title: 'Yes, Hang Them 🌤️', message: 'Decent drying conditions. It might take a few hours.', bg: 'bg-emerald-400' };
+    return { status: 'good', score: averageScore, title: 'Yes, Hang Them 🌤️', message: 'Decent drying conditions. It might take a few hours.', bg: 'bg-emerald-400', conditions };
   } else {
-    return { status: 'poor', score: averageScore, title: 'Maybe Not ☁️', message: 'Too humid or still. They will stay damp all day.', bg: 'bg-orange-400' };
+    return { status: 'poor', score: averageScore, title: 'Maybe Not ☁️', message: 'Too humid or still. They will stay damp all day.', bg: 'bg-orange-400', conditions };
   }
 }
