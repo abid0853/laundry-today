@@ -1,6 +1,6 @@
 {
-  "name": "Will It Dry?",
-  "short_name": "WillItDry",
+  "name": "LaunDry Today",
+  "short_name": "LaunDry",
   "description": "Instantly know if your laundry will dry outside today.",
   "start_url": "/",
   "display": "standalone",
